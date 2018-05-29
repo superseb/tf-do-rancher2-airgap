@@ -1,0 +1,14 @@
+# Resources will be prefixed with this to avoid clashing names
+prefix = "myname"
+# Domain should be managed by DigitalOcean
+domain = "mydomain.com"
+# rancher/rancher image tag to use
+rancher_version = "v2.0.2"
+# Region where resources should be created
+region = "lon1"
+# Docker version of host running `rancher/rancher`
+docker_version_server = "17.03"
+# Docker version of host being added to a cluster (running `rancher/rancher-agent`)
+docker_version_agent = "17.03"
+# DigitalOcean ssh-keyid: retrieve using `curl -s -X GET -H "Content-Type: application/json" -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" "https://api.digitalocean.com/v2/account/keys?per_page=200"  | jq -r '.ssh_keys[] | select(.name=="YOUR_KEY_NAME") | .id'`
+ssh_keys = [ "1000000" ]

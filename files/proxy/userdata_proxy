@@ -1,0 +1,13 @@
+#!/bin/bash
+curl https://releases.rancher.com/install-docker/18.03.sh | sh
+
+echo '{"insecure-registries": ["${prefix}-registry.${domain}:5000"]}' > /etc/docker/daemon.json
+service docker restart
+
+IP="$(curl -s http://169.254.169.254/metadata/v1/interfaces/private/0/ipv4/address)"
+docker run --name squid -d --restart=always --publish $IP:3128:3128 --volume /srv/docker/squid/cache:/var/spool/squid3 sameersbn/squid:3.3.8-23
+
+docker run -d -p $IP:5000:5000 --restart=always --name registry -v /opt/docker-registry:/var/lib/registry registry:2
+
+docker run -v /var/run/docker.sock:/var/run/docker.sock superseb/rancher2img:latest ${prefix}-registry.${domain}:5000 ${rancher_version}
+
