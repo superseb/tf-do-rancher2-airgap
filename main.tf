@@ -26,7 +26,9 @@ variable "docker_version_agent" {
   default = "17.03"
 }
 
-variable "ssh_keys" { default =  [ 1000000 ] }
+variable "ssh_keys" {
+  default = [1000000]
+}
 
 resource "digitalocean_droplet" "rancherproxy-ubuntu" {
   count              = "1"
@@ -70,36 +72,35 @@ resource "digitalocean_firewall" "proxy" {
 
   inbound_rule = [
     {
-      protocol           = "tcp"
-      port_range         = "22"
-      source_addresses   = ["0.0.0.0/0", "::/0"]
+      protocol         = "tcp"
+      port_range       = "22"
+      source_addresses = ["0.0.0.0/0", "::/0"]
     },
     {
-      protocol           = "tcp"
-      port_range         = "1-65535"
-      source_addresses   = ["${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address_private}" ]
+      protocol         = "tcp"
+      port_range       = "1-65535"
+      source_addresses = ["${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address_private}"]
     },
     {
-      protocol           = "udp"
-      port_range         = "1-65535"
-      source_addresses   = ["${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address_private}" ]
+      protocol         = "udp"
+      port_range       = "1-65535"
+      source_addresses = ["${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address_private}"]
     },
   ]
 
   outbound_rule = [
     {
-      protocol           = "tcp"
-      port_range         = "1-65535"
+      protocol              = "tcp"
+      port_range            = "1-65535"
       destination_addresses = ["0.0.0.0/0", "::/0"]
     },
     {
-      protocol           = "udp"
-      port_range         = "1-65535"
-      destination_addresses   = ["0.0.0.0/0", "::/0"]
+      protocol              = "udp"
+      port_range            = "1-65535"
+      destination_addresses = ["0.0.0.0/0", "::/0"]
     },
   ]
 }
-
 
 resource "digitalocean_firewall" "airgap" {
   name = "${var.prefix}-airgap"
@@ -108,57 +109,57 @@ resource "digitalocean_firewall" "airgap" {
 
   inbound_rule = [
     {
-      protocol           = "tcp"
-      port_range         = "22"
-      source_addresses   = ["0.0.0.0/0", "::/0"]
+      protocol         = "tcp"
+      port_range       = "22"
+      source_addresses = ["0.0.0.0/0", "::/0"]
     },
     {
-      protocol           = "tcp"
-      port_range         = "80"
-      source_addresses   = ["0.0.0.0/0", "::/0"]
+      protocol         = "tcp"
+      port_range       = "80"
+      source_addresses = ["0.0.0.0/0", "::/0"]
     },
     {
-      protocol           = "tcp"
-      port_range         = "443"
-      source_addresses   = ["0.0.0.0/0", "::/0"]
+      protocol         = "tcp"
+      port_range       = "443"
+      source_addresses = ["0.0.0.0/0", "::/0"]
     },
     {
-      protocol           = "tcp"
-      port_range         = "1-65535"
-      source_addresses   = ["${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address_private}","${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address}","${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address_private}","${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address}"]
+      protocol         = "tcp"
+      port_range       = "1-65535"
+      source_addresses = ["${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address}", "${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address}"]
     },
     {
-      protocol           = "udp"
-      port_range         = "1-65535"
-      source_addresses   = ["${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address_private}","${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address}","${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address_private}","${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address}","${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address}"]
+      protocol         = "udp"
+      port_range       = "1-65535"
+      source_addresses = ["${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address}", "${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address}"]
     },
   ]
 
   outbound_rule = [
     {
-      protocol                = "tcp"
-      port_range              = "53"
-      destination_addresses   = ["0.0.0.0/0", "::/0"]
+      protocol              = "tcp"
+      port_range            = "53"
+      destination_addresses = ["0.0.0.0/0", "::/0"]
     },
     {
-      protocol                = "udp"
-      port_range              = "53"
-      destination_addresses   = ["0.0.0.0/0", "::/0"]
+      protocol              = "udp"
+      port_range            = "53"
+      destination_addresses = ["0.0.0.0/0", "::/0"]
     },
     {
-      protocol                = "udp"
-      port_range              = "123"
-      destination_addresses   = ["0.0.0.0/0", "::/0"]
+      protocol              = "udp"
+      port_range            = "123"
+      destination_addresses = ["0.0.0.0/0", "::/0"]
     },
     {
-      protocol           = "tcp"
-      port_range         = "1-65535"
-      destination_addresses = ["${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address_private}","${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address}","${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address_private}","${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address}" ]
+      protocol              = "tcp"
+      port_range            = "1-65535"
+      destination_addresses = ["${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address}", "${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address}"]
     },
     {
-      protocol           = "udp"
-      port_range         = "1-65535"
-      destination_addresses   = ["${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address_private}","${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address}", "${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address_private}","${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address}" ]
+      protocol              = "udp"
+      port_range            = "1-65535"
+      destination_addresses = ["${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address}", "${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address_private}", "${digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address}"]
     },
   ]
 }
@@ -169,7 +170,7 @@ data "template_file" "userdata_proxy" {
   vars {
     domain          = "${var.domain}"
     prefix          = "${var.prefix}"
-    rancher_version = "${var.rancher_version}" 
+    rancher_version = "${var.rancher_version}"
   }
 }
 
@@ -181,7 +182,7 @@ data "template_file" "userdata_server" {
     domain                = "${var.domain}"
     prefix                = "${var.prefix}"
     proxy_address         = "${digitalocean_droplet.rancherproxy-ubuntu.ipv4_address_private}"
-    rancher_version       = "${var.rancher_version}" 
+    rancher_version       = "${var.rancher_version}"
   }
 }
 
@@ -193,7 +194,7 @@ data "template_file" "userdata_agent" {
     domain               = "${var.domain}"
     prefix               = "${var.prefix}"
     proxy_address        = "${digitalocean_droplet.rancherproxy-ubuntu.ipv4_address_private}"
-    rancher_version      = "${var.rancher_version}" 
+    rancher_version      = "${var.rancher_version}"
   }
 }
 
