@@ -3,7 +3,7 @@ prefix = "myname"
 # Domain should be managed by DigitalOcean
 domain = "mydomain.com"
 # rancher/rancher image tag to use
-rancher_version = "v2.0.2"
+rancher_version = "v2.0.8"
 # Region where resources should be created
 region = "lon1"
 # Docker version of host running `rancher/rancher`
