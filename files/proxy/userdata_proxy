@@ -7,7 +7,21 @@ service docker restart
 IP="$(curl -s http://169.254.169.254/metadata/v1/interfaces/private/0/ipv4/address)"
 docker run --name squid -d --restart=always --publish $IP:3128:3128 --volume /srv/docker/squid/cache:/var/spool/squid3 sameersbn/squid:3.3.8-23
 
-docker run -d -p $IP:5000:5000 --restart=always --name registry -v /opt/docker-registry:/var/lib/registry registry:2
+cd /root
+curl https://gist.githubusercontent.com/superseb/b2c1d6c9baa32609a49ee117a27bc700/raw/7cb196e974e13b213ac6ec3105971dd5e21e4c66/selfsignedcert.sh | bash -s -- ${prefix}-registry.${domain}
 
-docker run -v /var/run/docker.sock:/var/run/docker.sock superseb/rancher2img:latest ${prefix}-registry.${domain}:5000 ${rancher_version}
+mkdir -p /root/auth
+docker run --entrypoint htpasswd registry:2 -Bbn testuser testpassword > /root/auth/htpasswd
 
+docker run -d -p $IP:5000:5000 --restart=always --name registry -e "REGISTRY_AUTH=htpasswd" -e "REGISTRY_AUTH_HTPASSWD_REALM=Registry Realm" -e REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/cert.pem -e REGISTRY_HTTP_TLS_KEY=/certs/key.pem -v /root/certs:/certs -v /root/auth:/auth -v /opt/docker-registry:/var/lib/registry registry:2
+
+docker login --username=testuser --password=testpassword ${prefix}-registry.${domain}:5000
+
+docker run -v /root/.docker/config.json:/root/.docker/config.json -v /var/run/docker.sock:/var/run/docker.sock superseb/rancher2img:latest ${prefix}-registry.${domain}:5000 ${rancher_version}
+
+# system charts
+# reachable at http://${prefix}-registry.${domain}:9999/system-charts.git
+mkdir /var/tmp/git
+git clone https://github.com/rancher/system-charts /var/tmp/git/system-charts
+
+docker run -d -v /var/tmp/git:/var/lib/initial -p $IP:9999:80 cirocosta/gitserver-http
