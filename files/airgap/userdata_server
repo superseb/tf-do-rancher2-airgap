@@ -6,8 +6,9 @@ echo "noproxy = 127.0.0.1,localhost,169.254.169.254" >> ~/.curlrc
 curl https://releases.rancher.com/install-docker/${docker_version_server}.sh | sh
 echo '{"insecure-registries": ["${prefix}-registry.${domain}:5000"]}' > /etc/docker/daemon.json
 service docker restart
+docker login --username=testuser --password=testpassword ${prefix}-registry.${domain}:5000
 until docker inspect ${prefix}-registry.${domain}:5000/rancher/rancher:${rancher_version} > /dev/null 2>&1; do
   docker pull ${prefix}-registry.${domain}:5000/rancher/rancher:${rancher_version}
   sleep 2
 done
-docker run -d -p 80:80 -p 443:443 -e CATTLE_SERVER_URL=https://${prefix}-rancherprivate.${domain} -e CATTLE_SYSTEM_DEFAULT_REGISTRY=${prefix}-registry.${domain}:5000 ${prefix}-registry.${domain}:5000/rancher/rancher:${rancher_version}
+docker run -d -p 80:80 -p 443:443 -e CATTLE_SERVER_URL=https://${prefix}-rancherprivate.${domain} -e CATTLE_SYSTEM_DEFAULT_REGISTRY=${prefix}-registry.${domain}:5000 ${prefix}-registry.${domain}:5000/rancher/rancher:${rancher_version} --debug
