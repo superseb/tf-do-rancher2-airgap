@@ -10,7 +10,12 @@ echo "noproxy = 127.0.0.1,localhost,169.254.169.254" >> ~/.curlrc
 curl https://releases.rancher.com/install-docker/${docker_version_agent}.sh | sh
 echo '{"insecure-registries": ["${prefix}-registry.${domain}:5000"]}' > /etc/docker/daemon.json
 service docker restart
-docker login --username=testuser --password=testpassword ${prefix}-registry.${domain}:5000
+
+if [ "${registry_auth}" = "true" ]; then
+  while [ ! -f /root/.docker/config.json ]; do docker login --username=testuser --password=testpassword ${prefix}-registry.${domain}:5000; sleep 5; done
+else
+  while true; do if [ `curl --noproxy '*' -sk https://${prefix}-registry.${domain}:5000/v2/` ]; then break; else sleep 5; echo "waiting on registry"; fi; done
+fi
 
 if [ `command -v curl` ]; then
   curl -sL https://releases.rancher.com/install-docker/${docker_version_agent}.sh | sh

@@ -11,7 +11,7 @@ variable "admin_password" {
 }
 
 variable "rancher_version" {
-  default = "v2.3.2"
+  default = "v2.4.5"
 }
 
 variable "k8s_version" {
@@ -24,6 +24,10 @@ variable "cluster_name" {
 
 variable "region" {
   default = "ams3"
+}
+
+variable "proxy_size" {
+  default = "c-4"
 }
 
 variable "size" {
@@ -42,45 +46,67 @@ variable "ssh_keys" {
   default = [1000000]
 }
 
-resource "digitalocean_droplet" "rancherproxy-ubuntu" {
+variable "registry_auth" {
+  type    = bool
+  default = true
+}
+
+variable "rancher_args" {
+  default = "--trace"
+}
+
+resource "digitalocean_droplet" "rancherproxy-airgap" {
   count              = "1"
   image              = "ubuntu-18-04-x64"
-  name               = "${var.prefix}-rancherproxy-ubuntu"
+  name               = "${var.prefix}-rancherproxy-airgap"
   private_networking = true
   region             = var.region
-  size               = var.size
+  size               = var.proxy_size
   user_data          = data.template_file.userdata_proxy.rendered
   ssh_keys           = var.ssh_keys
+}
+
+resource "digitalocean_volume" "rancherproxy-airgap-volume" {
+  region                  = var.region
+  name                    = "${var.prefix}-rancherproxy-volume"
+  size                    = 50
+  initial_filesystem_type = "ext4"
+  description             = "${var.prefix}-rancherproxy-volume"
+}
+
+resource "digitalocean_volume_attachment" "rancherproxy-airgap-volume-attachment" {
+  droplet_id = digitalocean_droplet.rancherproxy-airgap[0].id
+  volume_id  = digitalocean_volume.rancherproxy-airgap-volume.id
 }
 
 resource "digitalocean_record" "registry" {
   domain = var.domain
   type   = "A"
   name   = "${var.prefix}-registry"
-  value  = digitalocean_droplet.rancherproxy-ubuntu[0].ipv4_address_private
-  ttl    = 300
+  value  = digitalocean_droplet.rancherproxy-airgap[0].ipv4_address_private
+  ttl    = 120
 }
 
 resource "digitalocean_record" "rancher" {
   domain = var.domain
   type   = "A"
   name   = "${var.prefix}-rancher"
-  value  = digitalocean_droplet.rancherserver-ubuntu[0].ipv4_address
-  ttl    = 300
+  value  = digitalocean_droplet.rancherserver-airgap[0].ipv4_address
+  ttl    = 120
 }
 
 resource "digitalocean_record" "rancherprivate" {
   domain = var.domain
   type   = "A"
   name   = "${var.prefix}-rancherprivate"
-  value  = digitalocean_droplet.rancherserver-ubuntu[0].ipv4_address_private
-  ttl    = 300
+  value  = digitalocean_droplet.rancherserver-airgap[0].ipv4_address_private
+  ttl    = 120
 }
 
 resource "digitalocean_firewall" "proxy" {
   name = "${var.prefix}-proxy"
 
-  droplet_ids = [digitalocean_droplet.rancherproxy-ubuntu[0].id]
+  droplet_ids = [digitalocean_droplet.rancherproxy-airgap[0].id]
 
   inbound_rule {
     protocol         = "tcp"
@@ -90,12 +116,12 @@ resource "digitalocean_firewall" "proxy" {
   inbound_rule {
     protocol         = "tcp"
     port_range       = "1-65535"
-    source_addresses = flatten([digitalocean_droplet.rancherproxy-ubuntu[*].ipv4_address_private, digitalocean_droplet.rancherserver-ubuntu[*].ipv4_address_private, digitalocean_droplet.rancheragent-ubuntu[*].ipv4_address_private])
+    source_addresses = flatten([digitalocean_droplet.rancherproxy-airgap[*].ipv4_address_private, digitalocean_droplet.rancherserver-airgap[*].ipv4_address_private, digitalocean_droplet.rancheragent-airgap[*].ipv4_address_private])
   }
   inbound_rule {
     protocol         = "udp"
     port_range       = "1-65535"
-    source_addresses = flatten([digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address_private, digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address_private, digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address_private])
+    source_addresses = flatten([digitalocean_droplet.rancherproxy-airgap.*.ipv4_address_private, digitalocean_droplet.rancherserver-airgap.*.ipv4_address_private, digitalocean_droplet.rancheragent-airgap.*.ipv4_address_private])
   }
 
   outbound_rule {
@@ -113,7 +139,7 @@ resource "digitalocean_firewall" "proxy" {
 resource "digitalocean_firewall" "airgap" {
   name = "${var.prefix}-airgap"
 
-  droplet_ids = flatten([digitalocean_droplet.rancherserver-ubuntu[0].id, digitalocean_droplet.rancheragent-ubuntu[*].id])
+  droplet_ids = flatten([digitalocean_droplet.rancherserver-airgap[0].id, digitalocean_droplet.rancheragent-airgap[*].id])
 
   inbound_rule {
     protocol         = "tcp"
@@ -133,12 +159,12 @@ resource "digitalocean_firewall" "airgap" {
   inbound_rule {
     protocol         = "tcp"
     port_range       = "1-65535"
-    source_addresses = flatten([digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address_private, digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address, digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address_private, digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address, digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address_private, digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address])
+    source_addresses = flatten([digitalocean_droplet.rancherproxy-airgap.*.ipv4_address_private, digitalocean_droplet.rancherproxy-airgap.*.ipv4_address, digitalocean_droplet.rancherserver-airgap.*.ipv4_address_private, digitalocean_droplet.rancherserver-airgap.*.ipv4_address, digitalocean_droplet.rancheragent-airgap.*.ipv4_address_private, digitalocean_droplet.rancheragent-airgap.*.ipv4_address])
   }
   inbound_rule {
     protocol         = "udp"
     port_range       = "1-65535"
-    source_addresses = flatten([digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address_private, digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address, digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address_private, digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address, digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address_private, digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address])
+    source_addresses = flatten([digitalocean_droplet.rancherproxy-airgap.*.ipv4_address_private, digitalocean_droplet.rancherproxy-airgap.*.ipv4_address, digitalocean_droplet.rancherserver-airgap.*.ipv4_address_private, digitalocean_droplet.rancherserver-airgap.*.ipv4_address, digitalocean_droplet.rancheragent-airgap.*.ipv4_address_private, digitalocean_droplet.rancheragent-airgap.*.ipv4_address])
   }
 
   outbound_rule {
@@ -159,12 +185,12 @@ resource "digitalocean_firewall" "airgap" {
   outbound_rule {
     protocol              = "tcp"
     port_range            = "1-65535"
-    destination_addresses = flatten([digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address_private, digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address, digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address_private, digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address, digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address_private, digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address])
+    destination_addresses = flatten([digitalocean_droplet.rancherproxy-airgap.*.ipv4_address_private, digitalocean_droplet.rancherproxy-airgap.*.ipv4_address, digitalocean_droplet.rancherserver-airgap.*.ipv4_address_private, digitalocean_droplet.rancherserver-airgap.*.ipv4_address, digitalocean_droplet.rancheragent-airgap.*.ipv4_address_private, digitalocean_droplet.rancheragent-airgap.*.ipv4_address])
   }
   outbound_rule {
     protocol              = "udp"
     port_range            = "1-65535"
-    destination_addresses = flatten([digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address_private, digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address, digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address_private, digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address, digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address_private, digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address])
+    destination_addresses = flatten([digitalocean_droplet.rancherproxy-airgap.*.ipv4_address_private, digitalocean_droplet.rancherproxy-airgap.*.ipv4_address, digitalocean_droplet.rancherserver-airgap.*.ipv4_address_private, digitalocean_droplet.rancherserver-airgap.*.ipv4_address, digitalocean_droplet.rancheragent-airgap.*.ipv4_address_private, digitalocean_droplet.rancheragent-airgap.*.ipv4_address])
   }
 }
 
@@ -175,6 +201,7 @@ data "template_file" "userdata_proxy" {
     domain          = var.domain
     prefix          = var.prefix
     rancher_version = var.rancher_version
+    registry_auth   = var.registry_auth
   }
 }
 
@@ -188,9 +215,11 @@ data "template_file" "userdata_server" {
     domain                = var.domain
     k8s_version           = var.k8s_version
     prefix                = var.prefix
-    proxy_address         = digitalocean_droplet.rancherproxy-ubuntu[0].ipv4_address_private
-    cluster_addresses     = join(",", digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address)
+    registry_auth         = var.registry_auth
+    proxy_address         = digitalocean_droplet.rancherproxy-airgap[0].ipv4_address_private
+    cluster_addresses     = join(",", digitalocean_droplet.rancheragent-airgap.*.ipv4_address)
     rancher_version       = var.rancher_version
+    rancher_args          = var.rancher_args
   }
 }
 
@@ -203,15 +232,16 @@ data "template_file" "userdata_agent" {
     docker_version_agent = var.docker_version_agent
     domain               = var.domain
     prefix               = var.prefix
-    proxy_address        = digitalocean_droplet.rancherproxy-ubuntu[0].ipv4_address_private
+    registry_auth        = var.registry_auth
+    proxy_address        = digitalocean_droplet.rancherproxy-airgap[0].ipv4_address_private
     rancher_version      = var.rancher_version
   }
 }
 
-resource "digitalocean_droplet" "rancherserver-ubuntu" {
+resource "digitalocean_droplet" "rancherserver-airgap" {
   count              = "1"
   image              = "ubuntu-18-04-x64"
-  name               = "${var.prefix}-rancherserver-${count.index}-ubuntu1604"
+  name               = "${var.prefix}-rancherserver-airgap-${count.index}"
   private_networking = true
   region             = var.region
   size               = var.size
@@ -219,10 +249,10 @@ resource "digitalocean_droplet" "rancherserver-ubuntu" {
   ssh_keys           = var.ssh_keys
 }
 
-resource "digitalocean_droplet" "rancheragent-ubuntu" {
+resource "digitalocean_droplet" "rancheragent-airgap" {
   count              = "2"
   image              = "ubuntu-18-04-x64"
-  name               = "${var.prefix}-rancheragent-${count.index}-ubuntu1604"
+  name               = "${var.prefix}-rancheragent-airgap-${count.index}"
   private_networking = true
   region             = var.region
   size               = var.size
@@ -231,15 +261,15 @@ resource "digitalocean_droplet" "rancheragent-ubuntu" {
 }
 
 output "rancherproxyip" {
-  value = [digitalocean_droplet.rancherproxy-ubuntu.*.ipv4_address]
+  value = [digitalocean_droplet.rancherproxy-airgap.*.ipv4_address]
 }
 
-output "rancherserver-ubuntu" {
-  value = [digitalocean_droplet.rancherserver-ubuntu.*.ipv4_address]
+output "rancherserver-airgap" {
+  value = [digitalocean_droplet.rancherserver-airgap.*.ipv4_address]
 }
 
-output "rancheragent-ubuntu" {
-  value = [digitalocean_droplet.rancheragent-ubuntu.*.ipv4_address]
+output "rancheragent-airgap" {
+  value = [digitalocean_droplet.rancheragent-airgap.*.ipv4_address]
 }
 
 output "rancher-url" {

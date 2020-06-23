@@ -10,7 +10,12 @@ echo "noproxy = 127.0.0.1,localhost,169.254.169.254" >> ~/.curlrc
 curl https://releases.rancher.com/install-docker/${docker_version_server}.sh | sh
 echo '{"insecure-registries": ["${prefix}-registry.${domain}:5000"]}' > /etc/docker/daemon.json
 service docker restart
-docker login --username=testuser --password=testpassword ${prefix}-registry.${domain}:5000
+
+if [ "${registry_auth}" = "true" ]; then
+  while [ ! -f /root/.docker/config.json ]; do docker login --username=testuser --password=testpassword ${prefix}-registry.${domain}:5000; sleep 5; done
+else
+  while true; do if [ `curl --noproxy '*' -sk https://${prefix}-registry.${domain}:5000/v2/` ]; then break; else sleep 5; echo "waiting on registry"; fi; done
+fi
 
 if [ `command -v curl` ]; then
   curl -sL https://releases.rancher.com/install-docker/${docker_version_server}.sh | sh
@@ -29,7 +34,7 @@ until docker inspect ${prefix}-registry.${domain}:5000/rancher/rancher:${rancher
   docker pull ${prefix}-registry.${domain}:5000/rancher/rancher:${rancher_version}
   sleep 2
 done
-docker run -d -p 80:80 -p 443:443 -e HTTP_PROXY="http://${proxy_address}:3128" -e HTTPS_PROXY="http://${proxy_address}:3128" -e NO_PROXY="localhost,127.0.0.1,0.0.0.0,10.0.0.0/8,172.16.0.0/16,192.168.0.0/24,${cluster_addresses},${domain}" -e CATTLE_SERVER_URL=https://${prefix}-rancherprivate.${domain} -e CATTLE_SYSTEM_DEFAULT_REGISTRY=${prefix}-registry.${domain}:5000 ${prefix}-registry.${domain}:5000/rancher/rancher:${rancher_version} --debug
+docker run -d -p 80:80 -p 443:443 -e HTTP_PROXY="http://${proxy_address}:3128" -e HTTPS_PROXY="http://${proxy_address}:3128" -e NO_PROXY="localhost,127.0.0.1,0.0.0.0,10.0.0.0/8,172.16.0.0/16,192.168.0.0/24,${cluster_addresses},${domain}" -e CATTLE_SERVER_URL=https://${prefix}-rancherprivate.${domain} -e CATTLE_SYSTEM_DEFAULT_REGISTRY=${prefix}-registry.${domain}:5000 ${prefix}-registry.${domain}:5000/rancher/rancher:${rancher_version} ${rancher_args}
 
 while true; do
   docker run --rm --net=host $curlimage -sLk https://127.0.0.1/ping && break
@@ -63,7 +68,11 @@ APIRESPONSE=$(docker run --rm --net=host $curlimage -s 'https://127.0.0.1/v3/tok
 APITOKEN=`echo $APIRESPONSE | docker run --rm -i $jqimage -r .token`
 
 # Create cluster
-CLUSTERRESPONSE=$(docker run --rm --net=host $curlimage -s 'https://127.0.0.1/v3/cluster' -H 'content-type: application/json' -H "Authorization: Bearer $APITOKEN" --data-binary '{"dockerRootDir":"/var/lib/docker","enableNetworkPolicy":false,"type":"cluster","rancherKubernetesEngineConfig":{"kubernetesVersion":"${k8s_version}","addonJobTimeout":30,"ignoreDockerVersion":true,"sshAgentAuth":false,"type":"rancherKubernetesEngineConfig","authentication":{"type":"authnConfig","strategy":"x509"},"network":{"type":"networkConfig","plugin":"canal"},"ingress":{"type":"ingressConfig","provider":"nginx"},"monitoring":{"type":"monitoringConfig","provider":"metrics-server"},"services":{"type":"rkeConfigServices","kubeApi":{"podSecurityPolicy":false,"type":"kubeAPIService"},"etcd":{"creation":"12h","extraArgs":{"heartbeat-interval":500,"election-timeout":5000},"retention":"72h","snapshot":false,"type":"etcdService","backupConfig":{"enabled":true,"intervalHours":12,"retention":6,"type":"backupConfig"}}},"privateRegistries":[{"isDefault":true,"type":"privateRegistry","url":"${prefix}-registry.${domain}:5000","user":"testuser","password":"testpassword"}]},"localClusterAuthEndpoint":{"enabled":true,"type":"localClusterAuthEndpoint"},"name":"${cluster_name}"}' --insecure)
+if [ "${registry_auth}" = "true" ]; then
+  CLUSTERRESPONSE=$(docker run --rm --net=host $curlimage -s 'https://127.0.0.1/v3/cluster' -H 'content-type: application/json' -H "Authorization: Bearer $APITOKEN" --data-binary '{"dockerRootDir":"/var/lib/docker","enableNetworkPolicy":false,"type":"cluster","rancherKubernetesEngineConfig":{"kubernetesVersion":"${k8s_version}","addonJobTimeout":30,"ignoreDockerVersion":true,"sshAgentAuth":false,"type":"rancherKubernetesEngineConfig","authentication":{"type":"authnConfig","strategy":"x509"},"network":{"type":"networkConfig","plugin":"canal"},"ingress":{"type":"ingressConfig","provider":"nginx"},"monitoring":{"type":"monitoringConfig","provider":"metrics-server"},"services":{"type":"rkeConfigServices","kubeApi":{"podSecurityPolicy":false,"type":"kubeAPIService"},"etcd":{"creation":"12h","extraArgs":{"heartbeat-interval":500,"election-timeout":5000},"retention":"72h","snapshot":false,"type":"etcdService","backupConfig":{"enabled":true,"intervalHours":12,"retention":6,"type":"backupConfig"}}},"privateRegistries":[{"isDefault":true,"type":"privateRegistry","url":"${prefix}-registry.${domain}:5000","user":"testuser","password":"testpassword"}]},"localClusterAuthEndpoint":{"enabled":true,"type":"localClusterAuthEndpoint"},"name":"${cluster_name}"}' --insecure)
+else
+  CLUSTERRESPONSE=$(docker run --rm --net=host $curlimage -s 'https://127.0.0.1/v3/cluster' -H 'content-type: application/json' -H "Authorization: Bearer $APITOKEN" --data-binary '{"dockerRootDir":"/var/lib/docker","enableNetworkPolicy":false,"type":"cluster","rancherKubernetesEngineConfig":{"kubernetesVersion":"${k8s_version}","addonJobTimeout":30,"ignoreDockerVersion":true,"sshAgentAuth":false,"type":"rancherKubernetesEngineConfig","authentication":{"type":"authnConfig","strategy":"x509"},"network":{"type":"networkConfig","plugin":"canal"},"ingress":{"type":"ingressConfig","provider":"nginx"},"monitoring":{"type":"monitoringConfig","provider":"metrics-server"},"services":{"type":"rkeConfigServices","kubeApi":{"podSecurityPolicy":false,"type":"kubeAPIService"},"etcd":{"creation":"12h","extraArgs":{"heartbeat-interval":500,"election-timeout":5000},"retention":"72h","snapshot":false,"type":"etcdService","backupConfig":{"enabled":true,"intervalHours":12,"retention":6,"type":"backupConfig"}}}},"localClusterAuthEndpoint":{"enabled":true,"type":"localClusterAuthEndpoint"},"name":"${cluster_name}"}' --insecure)
+fi
 # Extract clusterid to use for generating the docker run command
 CLUSTERID=`echo $CLUSTERRESPONSE | docker run --rm -i $jqimage -r .id`
 
