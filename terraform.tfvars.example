@@ -5,7 +5,7 @@ domain = "mydomain.com"
 # admin password
 admin_password = "moresecretthanyoucanimagine"
 # rancher/rancher image tag to use
-rancher_version = "v2.3.2"
+rancher_version = "v2.4.5"
 # cluster name
 cluster_name = "airgap"
 # Region where resources should be created
@@ -16,3 +16,7 @@ docker_version_server = "19.03"
 docker_version_agent = "19.03"
 # DigitalOcean ssh-keyid: retrieve using `curl -s -X GET -H "Content-Type: application/json" -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" "https://api.digitalocean.com/v2/account/keys?per_page=200"  | jq -r '.ssh_keys[] | select(.name=="YOUR_KEY_NAME") | .id'`
 ssh_keys = [ "1000000" ]
+# Control if registry should have HTTP auth enabled
+registry_auth = false
+# Provide additional arguments to rancher/rancher container
+rancher_args = "--trace"
