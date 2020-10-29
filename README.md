@@ -1,4 +1,4 @@
-# Terraform config to launch Rancher 2.0 in a simulated airgapped environment
+# Terraform config to launch Rancher 2.x in a simulated airgapped environment
 
 ## How to use
 
