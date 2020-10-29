@@ -11,7 +11,7 @@ variable "admin_password" {
 }
 
 variable "rancher_version" {
-  default = "v2.4.5"
+  default = "v2.5.1"
 }
 
 variable "k8s_version" {
@@ -57,7 +57,7 @@ variable "rancher_args" {
 
 resource "digitalocean_droplet" "rancherproxy-airgap" {
   count              = "1"
-  image              = "ubuntu-18-04-x64"
+  image              = "ubuntu-20-04-x64"
   name               = "${var.prefix}-rancherproxy-airgap"
   private_networking = true
   region             = var.region
@@ -240,7 +240,7 @@ data "template_file" "userdata_agent" {
 
 resource "digitalocean_droplet" "rancherserver-airgap" {
   count              = "1"
-  image              = "ubuntu-18-04-x64"
+  image              = "ubuntu-20-04-x64"
   name               = "${var.prefix}-rancherserver-airgap-${count.index}"
   private_networking = true
   region             = var.region
@@ -251,7 +251,7 @@ resource "digitalocean_droplet" "rancherserver-airgap" {
 
 resource "digitalocean_droplet" "rancheragent-airgap" {
   count              = "2"
-  image              = "ubuntu-18-04-x64"
+  image              = "ubuntu-20-04-x64"
   name               = "${var.prefix}-rancheragent-airgap-${count.index}"
   private_networking = true
   region             = var.region

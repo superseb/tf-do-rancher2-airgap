@@ -12,7 +12,7 @@ echo '{"insecure-registries": ["${prefix}-registry.${domain}:5000"]}' > /etc/doc
 service docker restart
 
 if [ "${registry_auth}" = "true" ]; then
-  while [ ! -f /root/.docker/config.json ]; do docker login --username=testuser --password=testpassword ${prefix}-registry.${domain}:5000; sleep 5; done
+  while [ ! -f /root/.docker/config.json ]; do echo testpassword | docker login --username=testuser --password-stdin ${prefix}-registry.${domain}:5000; sleep 5; done
 else
   while true; do if [ `curl --noproxy '*' -sk https://${prefix}-registry.${domain}:5000/v2/` ]; then break; else sleep 5; echo "waiting on registry"; fi; done
 fi
@@ -34,10 +34,10 @@ until docker inspect ${prefix}-registry.${domain}:5000/rancher/rancher:${rancher
   docker pull ${prefix}-registry.${domain}:5000/rancher/rancher:${rancher_version}
   sleep 2
 done
-docker run -d -p 80:80 -p 443:443 -e HTTP_PROXY="http://${proxy_address}:3128" -e HTTPS_PROXY="http://${proxy_address}:3128" -e NO_PROXY="localhost,127.0.0.1,0.0.0.0,10.0.0.0/8,172.16.0.0/16,192.168.0.0/24,${cluster_addresses},${domain}" -e CATTLE_SERVER_URL=https://${prefix}-rancherprivate.${domain} -e CATTLE_SYSTEM_DEFAULT_REGISTRY=${prefix}-registry.${domain}:5000 ${prefix}-registry.${domain}:5000/rancher/rancher:${rancher_version} ${rancher_args}
+docker run -d --privileged -p 80:80 -p 443:443 -e HTTP_PROXY="http://${proxy_address}:3128" -e HTTPS_PROXY="http://${proxy_address}:3128" -e NO_PROXY="localhost,127.0.0.1,0.0.0.0,10.0.0.0/8,172.16.0.0/16,192.168.0.0/24,${cluster_addresses},${domain}" -e CATTLE_SERVER_URL=https://${prefix}-rancherprivate.${domain} -e CATTLE_SYSTEM_DEFAULT_REGISTRY=${prefix}-registry.${domain}:5000 ${prefix}-registry.${domain}:5000/rancher/rancher:${rancher_version} ${rancher_args}
 
 while true; do
-  docker run --rm --net=host $curlimage -sLk https://127.0.0.1/ping && break
+  docker run --rm --net=host $curlimage -sLk https://127.0.0.1/ping && sleep 10 && break
   sleep 5
 done
 
@@ -66,6 +66,23 @@ APIRESPONSE=$(docker run --rm --net=host $curlimage -s 'https://127.0.0.1/v3/tok
 
 # Extract and store token
 APITOKEN=`echo $APIRESPONSE | docker run --rm -i $jqimage -r .token`
+
+# Check for available k8s versions if not specifically set
+if [ -z "${k8s_version}" ]; then
+    while true; do
+        K8SVERSIONRESPONSE=$(docker run --rm --net=host $curlimage -s 'https://127.0.0.1/v3/settings/k8s-version' -H 'content-type: application/json' -H "Authorization: Bearer $APITOKEN" --insecure)
+        K8SVERSION=$(echo $K8SVERSIONRESPONSE | docker run --rm -i $jqimage -r .value)
+        echo "K8SVERSION: "$K8SVERSION""
+
+        if [ "$K8SVERSION" != "" ]; then
+            break
+        else
+            sleep 5
+        fi
+    done
+else
+    K8SVERSION="${k8s_version}"
+fi
 
 # Create cluster
 if [ "${registry_auth}" = "true" ]; then
