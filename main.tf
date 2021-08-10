@@ -11,7 +11,7 @@ variable "admin_password" {
 }
 
 variable "rancher_version" {
-  default = "v2.5.1"
+  default = "v2.5.9"
 }
 
 variable "k8s_version" {
@@ -35,11 +35,11 @@ variable "size" {
 }
 
 variable "docker_version_server" {
-  default = "19.03"
+  default = "20.10"
 }
 
 variable "docker_version_agent" {
-  default = "19.03"
+  default = "20.10"
 }
 
 variable "ssh_keys" {

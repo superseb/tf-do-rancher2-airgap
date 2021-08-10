@@ -8,7 +8,7 @@ if [ -L /dev/disk/by-id/scsi-0DO_Volume_${prefix}-rancherproxy-volume ]; then
   mount -a
 fi
 
-curl https://releases.rancher.com/install-docker/19.03.sh | sh
+curl https://releases.rancher.com/install-docker/20.10.sh | sh
 
 echo '{"insecure-registries": ["${prefix}-registry.${domain}:5000"]}' > /etc/docker/daemon.json
 service docker restart
@@ -52,18 +52,17 @@ for image in $curlimage $jqimage; do
 done
 
 # Mirror latest k8s version in KDM
-latestk8s=$(curl -sL https://raw.githubusercontent.com/rancher/kontainer-driver-metadata/release-v2.5/data/data.json | docker run -i stedolan/jq -r '.K8sVersionRKESystemImages | keys[]' | sort -V | tail -1 | awk -F'-' '{print $1"-"$2 }')
-latestk8simage="rancher/hyperkube:$latestk8s"
-until docker inspect $latestk8simage > /dev/null 2>&1; do
-  docker pull $latestk8simage
-  docker tag $latestk8simage ${prefix}-registry.${domain}:5000/$latestk8simage
-  docker push ${prefix}-registry.${domain}:5000/$latestk8simage
-  sleep 2
-done
+export rancher_version="${rancher_version}"
+export major_rancher_version=$(echo $rancher_version | cut -d. -f1)
+export minor_rancher_version=$(echo $rancher_version | cut -d. -f2)
 
-o# system charts
-# reachable at http://${prefix}-registry.${domain}:9999/system-charts.git
-#mkdir /var/tmp/git
-#git clone https://github.com/rancher/system-charts /var/tmp/git/system-charts
-#
-#docker run -d -v /var/tmp/git:/var/lib/initial -p $IP:9999:80 cirocosta/gitserver-http
+latestk8s=$(curl -sL https://raw.githubusercontent.com/rancher/kontainer-driver-metadata/release-$${major_rancher_version}.$${minor_rancher_version}/data/data.json | docker run -i stedolan/jq -r '.K8sVersionRKESystemImages | keys[]' | sort -V | tail -1)
+latestimages=$(curl -sL https://raw.githubusercontent.com/rancher/kontainer-driver-metadata/release-$${major_rancher_version}.$${minor_rancher_version}/data/data.json | docker run -i stedolan/jq -r '.K8sVersionRKESystemImages["'"$latestk8s"'"] | .[]' | grep -v kubelet-pause)
+for image in $latestimages; do
+  until docker inspect $image > /dev/null 2>&1; do
+    docker pull $image
+    docker tag $image ${prefix}-registry.${domain}:5000/$image
+    docker push ${prefix}-registry.${domain}:5000/$image
+    sleep 2
+  done
+done
